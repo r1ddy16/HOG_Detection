@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script async src="https://docs.opencv.org/master/opencv.js" onload="onOpenCvLoaded();" type="text/javascript"></script>
+</head>
+<body>
+  <input type="file" id="inputImage" accept="image/*">
+  <canvas id="canvas"></canvas>
+
+  <script type="text/javascript">
+    function onOpenCvLoaded() {
+      // Function to perform object detection using HOG
+      function performObjectDetectionHOG(imageData) {
+        // Load the HOG cascade classifier
+        const classifier = new cv.CascadeClassifier();
+        classifier.load('hog.xml');
+
+        // Convert the image to grayscale
+        const gray = new cv.Mat();
+        cv.cvtColor(imageData, gray, cv.COLOR_RGBA2GRAY);
+
+        // Detect objects using HOG
+        const objects = new cv.RectVector();
+        const scaleFactor = 1.1;
+        const minNeighbors = 3;
+        classifier.detectMultiScale(gray, objects, scaleFactor, minNeighbors);
+
+        // Draw bounding boxes around the detected objects
+        for (let i = 0; i < objects.size(); ++i) {
+          const rect = objects.get(i);
+          const x = rect.x;
+          const y = rect.y;
+          const w = rect.width;
+          const h = rect.height;
+          cv.rectangle(imageData, new cv.Point(x, y), new cv.Point(x + w, y + h), [255, 0, 0, 255]);
+        }
+
+        // Clean up resources
+        gray.delete();
+        objects.delete();
+        classifier.delete();
+      }
+
+      // Handle image input change event
+      function handleImageInputChange(event) {
+        const inputImage = event.target;
+        if (inputImage.files && inputImage.files[0]) {
+          const reader = new FileReader();
+
+          // Load the image data and perform object detection
+          reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+              const canvas = document.getElementById('canvas');
+              const ctx = canvas.getContext('2d');
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              canvas.width = img.width;
+              canvas.height = img.height;
+              ctx.drawImage(img, 0, 0, img.width, img.height);
+
+              const imageData = ctx.getImageData(0, 0, img.width, img.height);
+              performObjectDetectionHOG(imageData);
+
+              ctx.putImageData(imageData, 0, 0);
+            };
+            img.src = event.target.result;
+          };
+
+          reader.readAsDataURL(inputImage.files[0]);
+        }
+      }
+
+      // Attach the image input change event handler
+      const inputImage = document.getElementById('inputImage');
+      inputImage.addEventListener('change', handleImageInputChange);
+    }
+  </script>
+</body>
+</html>
